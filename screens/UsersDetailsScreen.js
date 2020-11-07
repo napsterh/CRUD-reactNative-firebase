@@ -1,47 +1,105 @@
-import React, {useEffect} from 'react'
-import { View, Button, TextInput, ScrollView, StyleSheet } from 'react-native';
+import React, {useEffect, useState} from 'react'
+import { View, Button, TextInput, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import firebase from '../database/firebase';
 
 const UsersDetailsScreen = (props) => {
+
+    const initialState = {
+        id: '',
+        name: '',
+        email: '',
+        phone: ''
+    }
+
+    const [user, setUser] = useState();
+
+    const [loading, setLoading] = useState(true);
 
     const getUserById = async (id) => {
        const dbRef =  firebase.db.collection('users').doc(id);
        const doc = await dbRef.get();
        const user = doc.data();
-       console.log(user)
+       setUser({
+           ...user,
+           id: doc.id,
+       });
+       setLoading(false)
     }
     
     useEffect(() => {
         getUserById(props.route.params.userId)
-    })
+    }, [])
 
     const handleChangeText = (name, value) => {
-        setState({...state, [name]: value})
+        setUser({...user, [name]: value})
     }
 
+    const deleteUSer = async () => {
+        const dbRef = firebase.db.collection('users').doc(props.route.params.userId);
+        await dbRef.delete();
+        props.navigation.navigate('UserList');
+    }
+
+    const updateUser = async () => {
+        const dbRef = firebase.db.collection('users').doc(props.route.params.userId);
+        await dbRef.set({
+            name: user.name,
+            email: user.email,
+            phone: user.phone
+        })
+        setUser(initialState)
+        props.navigation.navigate('UserList');
+    }
+
+    const openConfirmationAlert = () => {
+        Alert.alert('Eliminar Usuario', '¿Estas seguro?', [
+            {text: 'Sí', onPress: () => deleteUSer()},
+            {text: 'No', onPress: () => console.log(false)}
+        ])
+    }
+
+    if(loading){
+        return (
+            <View>
+                <ActivityIndicator size="large" color="#9e9e9e" />
+            </View>
+        )
+    }
 
     return(
         <ScrollView style={styles.container}>
             <View style={styles.inputGroup}>
                 <TextInput
                     placeholder="Nombre de usuario"
+                    value={user.name}
                     onChangeText={(value) => handleChangeText('name', value)}
                 />
             </View>
             <View style={styles.inputGroup}>
                 <TextInput
                     placeholder="Correo de usuario"
+                    value={user.email}
                     onChangeText={(value) => handleChangeText('email', value)}
                 />
             </View>
             <View style={styles.inputGroup}>
                 <TextInput
                     placeholder="Teléfono de usuario"
+                    value={user.phone}
                     onChangeText={(value) => handleChangeText('phone', value)}
                 />
             </View>
             <View>
-                <Button title="Guardar Usuario" onPress={() => alert('trabajando')}/>
+                <Button
+                    color="#19AC52"
+                    title="Actualizar Usuario"
+                    onPress={() => updateUser()}/>
+            </View>
+            <View>
+                <Button
+                    color="#E37399"
+                    title="Eliminar Usuario"
+                    onPress={() => openConfirmationAlert()}/>
             </View>
         </ScrollView>
     )
